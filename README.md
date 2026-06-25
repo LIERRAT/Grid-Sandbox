@@ -41,3 +41,16 @@ Utilizes MATPOWER to run Sequential Time-series Power Flow (DCOPF) simulations. 
 Evaluates overall system resilience using metrics such as EUE. The platform allows for the testing of preventive scenarios—such as targeted generation weatherization or emergency load response programs to quantify the system-level impact of specific resilience investments.
 
 
+## Data Flow
+合成电网数据：从Texas A&M Electric Grid Test Case Respository 获取
+- 电网节点坐标数据
+- 电网分支天气采样点坐标数据
+
+天气数据处理：从ECMWF CDS获取 ERA5 数据
+风能表现建模
+太阳能表现建模
+储能表现建模
+热电表现建模
+水电表现建模
+负荷响应建模
+输电线失效建模
