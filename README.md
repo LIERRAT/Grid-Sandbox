@@ -3,10 +3,13 @@
 ## Project Status: Active Research
 Grid-Sandbox is currently under active development. This repository serves as a research documentation and technical progress tracker. 
 
-## The Problem We Are Solving
-Current studies on power grid winter resilience often struggle to adequately simulate system performance during extreme cold events. In real-world extreme weather conditions, the natural gas supply, power generation, transmission, and demand sectors exhibit complex coupled responses, which existing assessment models fail to fully capture. 
 
-Consequently, it remains challenging for Utilities and Planning Authorities to validate and address critical system reliability issues for NERC. Key unresolved challenges include:
+
+
+## The Problem We Are Solving
+Current studies on power grid resilience often struggle to adequately simulate system performance during extreme cold events. In real-world extreme weather conditions, the natural gas supply, power generation, transmission, and demand sectors exhibit complex coupled responses, which existing assessment models fail to fully capture. Consequently, it remains challenging for Utilities and Planning Authorities to validate and address critical system reliability issues for NERC. 
+
+Key unresolved challenges include:
 * Addressing the partial system impact of extreme cold weather expected in only a portion of the studied area.
 * Guaranteeing sufficient generation and reserves for upcoming winter conditions.
 * Effectively including planned outages, generating unit limitations, and the likely loss of fuel sources in winter assessments.
@@ -14,16 +17,18 @@ Consequently, it remains challenging for Utilities and Planning Authorities to v
 
 To address these industry pain points, Grid-Sandbox introduces a weather-driven hybrid response framework. By mapping ERA5 meteorological time-series data onto the synthetic grid buses, the project serves as a comprehensive system-level stress testing and assessment platform. 
 
-Since it does not rely on proprietary measured data, this model is highly portable and can be tested on various synthetic power grids.
+Since it does not rely on proprietary measured data, this model is expected to be highly portable and capable in testing on various synthetic power grids.
 
 ## Project Workflow
 The framework operates through a four-stage time-series simulation methodology:
+
+<img width="1271" height="651" alt="image" src="https://github.com/user-attachments/assets/ecd9ac35-427d-42d0-9d40-b8356e6d2f6b" />
 
 ### Stage 1: Weather Data Input
 The simulation is driven by high-resolution meteorological data (ECMWF's ERA5). Variables including temperature, wind speed, solar irradiance, humidity, and snow depth are ingested, cleaned, and spatially mapped to the specific nodes of the synthetic grid.
 
 ### Stage 2: Performance Models
-Weather stressors are mapped onto grid operations using State Machines and Non-homogenous Markov Chains to simulate dynamic performance across three main sectors:
+Weather stressors are mapped onto grid operations to simulate dynamic performance across four main sectors:
 * **Generation Performance:** Quantifies the probabilistic risk of outages and derates for diverse energy sources, including Wind, Solar, Nuclear, Natural Gas, Coal, and Hydroelectric, based on environmental thresholds.
 * **Load Response:** Decouples the grid load into residential, commercial, and industrial profiles. It applies load curves and temperature sensitivity models to reflect demand surges and integrates behind-the-meter (BTM) rooftop solar capacity.
 * **Transmission Availability:** Evaluates the probabilistic risk of transmission line collapses driven by physical stressors like ice accretion and winds.
