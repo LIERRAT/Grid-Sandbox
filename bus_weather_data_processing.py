@@ -10,10 +10,10 @@ def main():
     INSTANT_PARAMS = ["sd",  "2t", "2d", "10v","10u","100v","100u", "sp"]
     ACCUM_PARAMS   = ["ssrd", "10fg"]
     ALL_PARAMS     = INSTANT_PARAMS + ACCUM_PARAMS
-
+    WEATHER_RAW = "25010115.grib" # <<< input the weather data from CDS
     # ── 1. 读取 grib 并构建 Dataset ───────────────────────────────────────────────
 
-    ds_raw = ekd.from_source("file", "25010115.grib")
+    ds_raw = ekd.from_source("file", WEATHER_RAW)
 
     def extract_param(ds, shortName):
         fields = ds.sel(shortName=shortName)
