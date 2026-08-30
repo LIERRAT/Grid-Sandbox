@@ -1,32 +1,21 @@
-% Syngrid Ver8 >>> DCOPF time series modeling + BESS - load subsystems
-% following + VOLL Load Shedding + Unit Commitment for thermal generators +
-% zonal thermal and storage reserves
-
-
-
-
-%% SynGrid2025_timeseries.m  
-% ------------------------------------------------------------------------
-% Hourly time-series DCOPF on the Texas2k synthetic grid. Pipeline (single
-% forward pass, mirrors ERCOT DAM->RUC ordering):
+%   Syngrid2025 — hourly dispatch engine (stage 4 of the pipeline)
 %
-%   1) STORAGE first: a parameter-free QP (storageSchedulePeakShave) schedules
-%      the fleet to flatten system net load (load-wind-solar). No price-taking,
-%      no gain tuning -- magnitude is set by the fleet's own P/E limits.
-%   2) UNIT COMMITMENT (pass 0 SCUC) on the STORAGE-ADJUSTED residual
-%      (load - wind - solar - hydro - storage_net), so thermal is committed to
-%      the net load storage has already flattened.
-%   3) One DCOPF per hour: storage is FIXED to its schedule (discharge = fixed
-%      generator, charge = fixed bus load); renewables dispatchable-down; VOLL
-%      load-shed gens as the feasibility valve.
+%   Runs the ERCOT-scale synthetic grid hour by hour:
+%   storage scheduling (QP) -> unit commitment (SCUC) -> DC-OPF with VOLL load shedding and reserves.
 %
-% JOIN KEY:  GEN_I is the 1-based ROW INDEX into mpc.gen (verified). Load
-% joins on BUS_I -> mpc.bus row.
-% ------------------------------------------------------------------------
+%   Inputs : case file + the time-series CSVs from stages 1-3 
+%   (weather, wind/solar/hydro, generator availability, nodal load)
+% 
+%   Output : per-node, per-hour LMP, load shed, dispatch, storage state (.mat)
+%
+%   Requires: MATPOWER 8.1 + Gurobi
+%   Full methodology and validation: see docs/project_overview.pdf
+
+
 
 %% 0. Case + solver ------------------------------------------------------
 define_constants;
-casefile = "Texas2k_series25_case1_summerpeak.m";   % <<< synthetic grid
+casefile = "Texas2k_series25_case1_summerpeak.m";   % <<< synthetic grid model
 generator_data = "generator2025_data_modified.csv";
 solar_gen_data = "solar_generation_time_series.csv";
 wind_gen_data = "wind_generation_time_series.csv";
