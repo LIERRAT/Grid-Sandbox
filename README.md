@@ -144,5 +144,8 @@ a team that does, I'd really appreciate a pointer or an introduction.
 
 Feedback is genuinely welcome, and I'm always happy to connect.
 
+**Contact**
+Email: cs1948@scarletmail.rutgers.edu
+Linkedin: linkedin.com/in/chonseng-sou-15b96a175
 <!-- Add your contact: email / LinkedIn / GitHub profile link -->
 
