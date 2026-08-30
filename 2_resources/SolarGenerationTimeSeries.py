@@ -4,19 +4,19 @@ import pvlib
 
 
 def main():
-    # 1. 读表
+    # 1. Read the tables
     weather_df = pd.read_csv("bus_weather_data_25010115.csv")  
     bus_df = pd.read_csv("bus2025_data.csv")  
     gen_df = pd.read_csv("generator2025_data_modified.csv")  
 
-    # 2. 筛选光伏节点，并只合并静态空间信息
+    # 2. Filter the solar nodes and merge only the static spatial information
     solar_gens = gen_df[gen_df['FUEL_TYPE'] == 'SUN (Solar)'].copy()
     solar_gens = pd.merge(solar_gens, bus_df, on='BUS_I', how='left')
     
-   # 【改动点】准备一个空列表，用来收集所有电站的长表 DataFrame
+   # [Change] Prepare an empty list to collect the long-format DataFrame of every plant
     all_profiles_list = []
     
-    # 3. 遍历所有光伏发电机组
+    # 3. Iterate over all solar generating units
     for idx, row in solar_gens.iterrows():
         bus_id = row['BUS_I']
         gen_id = row['GEN_I']
@@ -27,25 +27,25 @@ def main():
         gen_status = row['GEN_STATUS']
         
 
-        # 4. 从总天气表中切片出该 substation 的局部天气
+        # 4. Slice the local weather for this substation out of the overall weather table
         local_weather = weather_df[weather_df['Substation_Number'] == sub_id].copy()
         local_weather['datetime'] = local_weather['date'] + ' ' + local_weather['time']
 
-        # 5. 执行物理模型计算
+        # 5. Run the physical model computation
         p_final = simulate_utility_scale_plant(lat, lon, pmax_mw, local_weather)
 
-        # 1. 确保你的列是真正的 datetime 格式（如果已经是，这步可以省略）
+        # 1. Make sure the column is a true datetime type (if it already is, this step can be skipped)
         local_weather ['datetime'] = pd.to_datetime(local_weather['datetime'])
 
-        # 2. 使用 .dt 访问器提取日期和时间
+        # 2. Use the .dt accessor to extract date and time
         local_weather['date'] = local_weather['datetime'].dt.date
         local_weather['time'] = local_weather['datetime'].dt.time
 
-        # 6. 构建光伏电站的DataFrame
+        # 6. Build the DataFrame for the solar plant
         gen_output = pd.DataFrame({
-            'datetime': local_weather['datetime'], # 时间戳
-            'date': local_weather['date'],          # 日期
-            'time': local_weather['time'],          # 时间
+            'datetime': local_weather['datetime'], # timestamp
+            'date': local_weather['date'],          # date
+            'time': local_weather['time'],          # time
             'BUS_I': bus_id,
             'GEN_I': gen_id,
             'Substation_Number': sub_id,
@@ -62,50 +62,50 @@ def main():
         
         
 
-        # 将当前电站的 DataFrame 追加到列表中
+        # Append the current plant's DataFrame to the list
         all_profiles_list.append(gen_output)
 
     # ==========================================
-    # 输出结果整合
+    # Consolidate the output results
     # ==========================================
     
-    # 纵向拼接所有的电站数据 (相当于 SQL 的 UNION ALL)
+    # Vertically concatenate all plant data (equivalent to SQL's UNION ALL)
     final_long_df = pd.concat(all_profiles_list, ignore_index=True)
     
-    # 将夜间或报错产生的缺失值填充为 0
+    # Fill missing values produced at night or by errors with 0
     final_long_df['simulated_PG'] = final_long_df['simulated_PG'].fillna(0)
     final_long_df['norm_power'] = final_long_df['norm_power'].fillna(0)
     
     print(final_long_df.head(30))
     
-    # 导出时去掉 index 即可得到干净的表格
+    # Drop the index on export to get a clean table
     final_long_df.to_csv("solar_generation_time_series.csv", index=False)
 
 
-# 核心仿真函数
+# Core simulation function
 
 def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
-    # 为避免修改原数据导致循环错乱，操作其副本
+    # Operate on a copy to avoid modifying the original data and corrupting the loop
     weather_df = weather_data.copy()
         
-    # 将字符串转为时间戳
+    # Convert the strings to timestamps
     weather_df['datetime'] = pd.to_datetime(weather_df['datetime'])
     weather_df.set_index('datetime', inplace=True)
     weather_df.index = weather_df.index.tz_localize('America/Chicago')
 
     # ---------------------------------------------------------
-    # Step 2: 气象特征的物理单位换算
+    # Step 2: Physical unit conversion of the meteorological features
     # ---------------------------------------------------------
     weather_df['ssrd'] = weather_df['ssrd'] / 3600.0
     weather_df['temp'] = weather_df['2t'] - 273.15
     weather_df['snow_depth'] = weather_df['sd'].clip(lower=0)
     weather_df['wind'] = weather_df['10Wind']
     
-    # 估算新增降雪量 (snowfall)：NREL模型核心驱动力是“降落的雪”，若缺数据则用深度差近似
+    # Estimate the new snowfall: the core driver of the NREL model is "falling snow"; if data is missing, approximate it from the depth difference
     weather_df['snowfall_approx'] = weather_df['sd'].diff().clip(lower=0).fillna(0)
 
     # ---------------------------------------------------------
-    # Step 3: 系统容量对齐 (AC to DC)
+    # Step 3: Capacity alignment (AC to DC)
     # ---------------------------------------------------------
     dc_ac_ratio = 1.3
     capacity_ac_watts = pmax_mw * 1e6
@@ -113,14 +113,14 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     
    
     # ---------------------------------------------------------
-    # Step 4. 计算太阳位置
+    # Step 4. Compute the solar position
     # ---------------------------------------------------------
     solpos = pvlib.solarposition.get_solarposition(weather_df.index, lat, lon)
     
     # ---------------------------------------------------------
-    # Step 5. 辐射分解 DIRINT (替代 ERBS，改善冬季低太阳角 DNI 高估)
+    # Step 5. Irradiance decomposition with DIRINT (replaces ERBS, improves the winter low-sun-angle DNI overestimation)
     # ---------------------------------------------------------
-    pressure = 101325   # elevation(米)；没有就用 101325.0
+    pressure = 101325   # elevation (meters); if unavailable, use 101325.0
 
     dni = pvlib.irradiance.dirint(
         ghi=weather_df['ssrd'],
@@ -129,12 +129,12 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
         pressure=pressure
     ).fillna(0)
 
-    # DHI 由闭合关系反推：GHI = DHI + DNI·cos(zenith)
+    # DHI is back-solved from the closure relation: GHI = DHI + DNI·cos(zenith)
     cos_zen = np.cos(np.radians(solpos['apparent_zenith'])).clip(lower=0)
     dhi = (weather_df['ssrd'] - dni * cos_zen).clip(lower=0)
     
     # ---------------------------------------------------------
-    # Step 6.配置 single axis tracker
+    # Step 6. Configure the single-axis tracker
     # ---------------------------------------------------------
     tracker_data = pvlib.tracking.singleaxis(
         apparent_zenith=solpos['apparent_zenith'],
@@ -147,7 +147,7 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     )
     
     # ---------------------------------------------------------
-    # Step 7. 计算POA辐射
+    # Step 7. Compute the POA irradiance
     # ---------------------------------------------------------
     poa = pvlib.irradiance.get_total_irradiance(
         surface_tilt=tracker_data['surface_tilt'],
@@ -160,17 +160,17 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     )
     
     # ---------------------------------------------------------
-    # Step 7.5: 夜间 NaN 处理 (防雷机制)
+    # Step 7.5: Nighttime NaN handling (safeguard mechanism)
     # ---------------------------------------------------------
-    # 跟踪器在夜间无有效角度，会导致 POA 产生 NaN，必须强行补 0
+    # The tracker has no valid angle at night, which produces NaN in the POA; these must be forced to 0
     poa['poa_global'] = poa['poa_global'].fillna(0)
     
-    # 为了后续 NREL 积雪模型能正常运行，面板倾角在夜间也需要填补
-    # (假设夜间面板平放，即 tilt=0)
+    # So the NREL snow model can run correctly afterward, the panel tilt must also be filled at night
+    # (assume the panels lie flat at night, i.e. tilt=0)
     tracker_data['surface_tilt'] = tracker_data['surface_tilt'].fillna(0)
     
     # ---------------------------------------------------------
-    # Step 8. 光伏电池模块的温度模型
+    # Step 8. Temperature model of the PV cell module
     # ---------------------------------------------------------
     
     # the source of parameters: pvlib.temperature.sapm_cell API reference - OPEN RACK, Glass to Glass
@@ -181,7 +181,7 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     )
     
     # ---------------------------------------------------------
-    # Step 9. DC 发电量 (PVWatts)
+    # Step 9. DC generation (PVWatts)
     # ---------------------------------------------------------
     
     # the source of parameters: pvlib.pvsystem.pvwatts_dc API reference
@@ -192,27 +192,27 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     )
 
     # ---------------------------------------------------------
-    # Step 9.5. 系统损失 (PVWatts 损失栈；雪除外——雪在 Step 11 单独算)
+    # Step 9.5. System losses (PVWatts loss stack; snow excluded — snow is handled separately in Step 11)
     # ---------------------------------------------------------
     
     # the source of parameters: pvlib.pvsystem.pvwatts_losses API reference
     
     system_losses_pct = pvlib.pvsystem.pvwatts_losses(
         soiling=2,          
-        shading=0,          # edit: 跟踪器 backtrack 已处理行间遮挡，置 0 避免重复计
-        snow=0,             # edit: 单独在 Step 11 处理，设 0 避免重复计算
+        shading=0,          # edit: the tracker's backtrack already handles inter-row shading, set to 0 to avoid double-counting
+        snow=0,             # edit: handled separately in Step 11, set to 0 to avoid double-counting
         mismatch=2,
         wiring=2,
         connections=0.5,
-        lid=1.5,            # 光致衰减
+        lid=1.5,            # light-induced degradation
         nameplate_rating=1,
-        age=0,              # 机队平均 N 年可设 ~0.5*N
-        availability=3      # 强迫停运/部分不可用；若严格对标 HSL 潜力可调低到 0~1
+        age=0,              # for a fleet averaging N years, set to ~0.5*N
+        availability=3      # forced outage / partial unavailability; for a strict HSL-potential benchmark, lower to 0~1
     )
-    p_dc = p_dc * (1 - system_losses_pct / 100.0)   # 损失施加在 DC 侧
+    p_dc = p_dc * (1 - system_losses_pct / 100.0)   # apply losses on the DC side
 
     # ---------------------------------------------------------
-    # Step 10. 逆变器 (PVWatts 逆变器：含效率曲线 + 切峰)
+    # Step 10. Inverter (PVWatts inverter: includes efficiency curve + clipping)
     # ---------------------------------------------------------
     
     # the source of parameters: pvlib.inverter.pvwatts API reference
@@ -220,21 +220,21 @@ def simulate_utility_scale_plant(lat, lon, pmax_mw, weather_data):
     eta_inv_nom = 0.96
     p_ac = pvlib.inverter.pvwatts(
         pdc=p_dc,
-        pdc0=capacity_ac_watts / eta_inv_nom,  # 令 AC 上限严格 = capacity_ac_watts
+        pdc0=capacity_ac_watts / eta_inv_nom,  # make the AC cap strictly = capacity_ac_watts
         eta_inv_nom=eta_inv_nom
     )
-    p_ac = p_ac.fillna(0).clip(lower=0)   # 夜间/极低 DC 时防 NaN 和负值
-    
+    p_ac = p_ac.fillna(0).clip(lower=0)   # guard against NaN and negative values at night / very low DC
+
     # ---------------------------------------------------------
-    # Step 11. 积雪损失后处理
+    # Step 11. Snow-loss post-processing
     # ---------------------------------------------------------
     snow_coverage = pvlib.snow.coverage_nrel(
-        snowfall=weather_df['snowfall_approx'],     # 使用近似的逐时新增降雪
+        snowfall=weather_df['snowfall_approx'],     # use the approximate hourly new snowfall
         poa_irradiance=poa['poa_global'], 
         temp_air=weather_df['temp'], 
         surface_tilt=tracker_data['surface_tilt'],
-        snow_depth=weather_df['snow_depth'],        # 加入地面积雪辅助判断
-        threshold_depth=1.0                         # 超过1cm开始起效
+        snow_depth=weather_df['snow_depth'],        # add ground snow depth as an auxiliary criterion
+        threshold_depth=1.0                         # takes effect above 1 cm
     )
 
     p_final = p_ac * (1 - snow_coverage)
