@@ -12,9 +12,9 @@ import pandas as pd
 import geopandas as gpd
 
 # ---- paths (edit to your locations) ----
-BUS_DATA   = "bus2025_data.csv"          # bus table WITH Latitude / Longitude
+BUS_DATA   = "bus2025_raw_data.csv"          # bus table WITH Latitude / Longitude
 COUNTY_SHP = "Texas_County_Boundaries_Detailed.shp"
-OUT_PATH   = "bus2025_data_modified.csv"          # write back in place (County column added)
+OUT_PATH   = "bus2025_data.csv"          # write back in place (County column added)
 
 # column names in the bus file
 LAT_COL = "Latitude"
