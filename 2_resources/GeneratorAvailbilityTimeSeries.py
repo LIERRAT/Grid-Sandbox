@@ -93,9 +93,9 @@ def main():
     # ---------------------------------------------------------
     # Step 1: 整理表格
     # ---------------------------------------------------------
-    weather_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus_weather_data_25010115.csv")  # 包含 substation/bus, 10u, 10v, 2t, sp 等
-    bus_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv")  # 包含 bus_number, substation_id
-    gen_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\generator2025_data_modified.csv")  # 包含 gen_id, bus_number, resource_type, capacity
+    weather_df = pd.read_csv("bus_weather_data_25010115.csv")  # 包含 substation/bus, 10u, 10v, 2t, sp 等
+    bus_df = pd.read_csv("bus2025_data.csv")  # 包含 bus_number, substation_id
+    gen_df = pd.read_csv("generator2025_data_modified.csv")  # 包含 gen_id, bus_number, resource_type, capacity
     thermal_gens = gen_df[(gen_df['FUEL_TYPE'] == 'NG (Natural Gas)') | (gen_df['FUEL_TYPE'] == 'BIT (Bituminous Coal)') | (gen_df['FUEL_TYPE'] == 'NUC (Nuclear)') | (gen_df['FUEL_TYPE'] == 'DFO (Distillate Fuel Oil)')].copy()
     hydro_annual_cf = 0.09
     hydro_gens = gen_df[(gen_df['FUEL_TYPE'] == 'WAT (Water)')].copy()
