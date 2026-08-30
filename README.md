@@ -82,17 +82,19 @@ stress, and how that stress shows up in both physical shortfall and price.
 
 ## Repository structure
 
-Numbered by run order; each stage feeds the next.
+The pipeline is split into five stages, numbered by run order. Each stage takes the
+previous stage's output plus the weather, and produces one piece of the final
+hour-by-hour scenario. The same weather event drives every stage.
 
-0_grid_prep/ grid enrichment: county mapping, generator type/cost, wind IEC class
-1_weather/ ERA5 GRIB -> per-substation hourly weather
-2_resources/ wind, solar, hydro output + generator availability time series
-3_load/ temperature-sensitive nodal load (+ data provenance README)
-4_dispatch/ storage -> unit commitment -> DC-OPF (MATLAB)
+| Folder | What it does |
+|---|---|
+| `0_grid_prep` | One-time static setup before any weather is applied: tags each bus with its county, and assigns every generator a technology type and cost curve. |
+| `1_weather` | Maps the raw weather file (ERA5 GRIB) onto the grid, producing an hourly weather value at each substation. |
+| `2_resources` | Turns weather into hourly supply: wind, solar, and hydro output per plant, plus conventional generator availability (cold-weather outages and derates). |
+| `3_load` | Turns weather into hourly demand: temperature-sensitive nodal load that rises as temperatures drop. |
+| `4_dispatch` | Runs the grid hour by hour — storage scheduling, unit commitment, and DC optimal power flow (DC-OPF). |
 
-
-Data files live alongside the stage that uses them; each stage's data provenance is
-documented in that stage's README.
+Data files live alongside the stage that uses them; each stage's data provenance is documented in that stage's README.
 
 ## Dependencies
 
