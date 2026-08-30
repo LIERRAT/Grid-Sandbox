@@ -6,10 +6,6 @@
 A weather-driven scenario generator for extreme-weather grid reliability, built on
 an ERCOT-scale synthetic grid.
 
-I used to think running a power grid was boring. Building this project completely
-changed my mind. I'm an EE junior at Rutgers, and for the past several months I've
-been building this as a way to understand how extreme cold turns into grid stress.
-
 **What it does:** you give it a real extreme cold event, and it turns that weather
 into hour-by-hour scenarios across an ERCOT-scale synthetic grid — with nodal load,
 renewable output, battery storage scheduling, unit commitment, and generator
