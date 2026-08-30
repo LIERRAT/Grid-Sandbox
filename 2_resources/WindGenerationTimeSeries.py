@@ -4,9 +4,9 @@ import numpy as np
 # =====================================================================
 # Paths (relative, repo-friendly — point elsewhere or move to a config module)
 # =====================================================================
-WEATHER_DATA = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus_weather_data_25010115.csv"          # substation/bus 级天气 (含 100Wind, 2t, sp)
-BUS_DATA     = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv"
-GEN_DATA     = r"C:\Users\jason\OneDrive\Documents\VSC\Earthkit\generator2025_data_modified.csv" # 风机 GENERATOR_TYPE 已是 IEC class
+WEATHER_DATA = "bus_weather_data_25010115.csv"          # substation/bus 级天气 (含 100Wind, 2t, sp)
+BUS_DATA     = "bus2025_data.csv"
+GEN_DATA     = "generator2025_data_modified.csv" # 风机 GENERATOR_TYPE 已是 IEC class
 
 def main():
 
