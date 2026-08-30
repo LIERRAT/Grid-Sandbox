@@ -113,14 +113,6 @@ Two core inputs, plus reference datasets — all public; obtain each from its so
 - **Reference** — NASA POWER (wind climatology), NREL SLOPE / ResStock / ComStock
   (load composition and shapes), ORNL (industrial load), EIA (fuel prices, heat rates).
 
-## Status and roadmap
-
-- [x] Core pipeline end to end (weather → dispatch → outputs)
-- [ ] Path/config cleanup for portability
-- [ ] Sample dataset for an end-to-end runnable demo
-- [ ] Stage-by-stage documentation
-- [ ] Fuel-logistics (gas supply) constraints
-
 ## Citation
 
 If you use this work, please cite this repository (github.com/LIERRAT/Grid-Sandbox).
