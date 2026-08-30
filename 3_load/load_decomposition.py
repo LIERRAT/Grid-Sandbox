@@ -23,10 +23,10 @@ import pandas as pd
 import numpy as np
 
 # ---- paths (relative, repo-friendly) ----
-BUS_DATA  = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv"
-RCI_RATIO = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\RCI_ratio_by_county.csv"
-BTM_PV    = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\BTM_PV_county_level.csv"
-OUT_PATH  = r"C:\Users\jason\OneDrive\Documents\VSC\Earthkit\SLOPE_load_composition_bus_level.csv"
+BUS_DATA  = "bus2025_data.csv"
+RCI_RATIO = "RCI_ratio_by_county.csv"
+BTM_PV    = "BTM_PV_county_level.csv"
+OUT_PATH  = "SLOPE_load_composition_bus_level.csv"
 
 ATOL = 1e-6
 
