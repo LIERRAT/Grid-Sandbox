@@ -65,6 +65,8 @@ and outages move together and only where the storm actually lands.
    shedding and reserves.
 5. **Output** — per-node, per-hour LMP, load shed, dispatch, and storage state.
 
+<img width="1651" height="1254" alt="image" src="https://github.com/user-attachments/assets/f61ca22c-e927-4af5-9ea7-9de885e57cb7" />
+
 ## Scope and limitations
 
 To be clear about what this is, and what it is not:
