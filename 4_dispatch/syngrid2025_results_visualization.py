@@ -1,5 +1,4 @@
 """
-geo_animation_extra.py
 --------------------------------------------------------------------------
 Unified geo-animation: all metrics through ONE render(), same
 "Texas map scatter + time animation -> mp4" form. Supersedes
