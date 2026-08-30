@@ -123,7 +123,7 @@ Two core inputs, plus reference datasets — all public; obtain each from its so
 
 ## Citation
 
-If you use this work, please cite it
+If you use this work, please cite this repository (github.com/LIERRAT/Grid-Sandbox).
 
 ## License
 
