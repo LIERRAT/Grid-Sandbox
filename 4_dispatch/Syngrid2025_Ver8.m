@@ -26,14 +26,14 @@
 
 %% 0. Case + solver ------------------------------------------------------
 define_constants;
-casefile = "C:\Users\jason\OneDrive\Documents\matpower8.1 (1)\Matpower Workspace\Texas2k_series25_case1_summerpeak.m";   % <<< adjust path if needed
-generator_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\generator2025_data_modified.csv";
-solar_gen_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\solar_generation_time_series.csv";
-wind_gen_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\wind_generation_time_series.csv";
-load_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\winterized_load_time_series_bus_level.csv";
-hydro_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\hydro_generation_time_series.csv";
-conventional_generator_availability_data = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\conventional_generation_down_timeseries.csv";
-conventional_generator_unavailabilty_record = "C:\Users\jason\OneDrive\Documents\VSC\Earthkit\gen_fault_record.csv";
+casefile = "Texas2k_series25_case1_summerpeak.m";   % <<< synthetic grid
+generator_data = "generator2025_data_modified.csv";
+solar_gen_data = "solar_generation_time_series.csv";
+wind_gen_data = "wind_generation_time_series.csv";
+load_data = "winterized_load_time_series_bus_level.csv";
+hydro_data = "hydro_generation_time_series.csv";
+conventional_generator_availability_data = "conventional_generation_down_timeseries.csv";
+conventional_generator_unavailabilty_record = "gen_fault_record.csv";
 
 mpc   = loadcase(casefile);
 mpopt = mpoption('verbose',0,'out.all',0,'opf.dc.solver','GUROBI'); % needs GUROBI License 
