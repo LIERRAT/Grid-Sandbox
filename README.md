@@ -15,16 +15,20 @@ actually hits. It's meant to be the upstream scenario layer that extreme-tempera
 reliability assessments like NERC TPL-008 may need, ahead of the studies grid
 operators run themselves.
 
-## Example outputs
+## Example inputs and outputs
 
-Two outputs from a mid-January window:
+One input from a mid-January window:
 
+https://github.com/user-attachments/assets/5c4f198e-29e2-4e81-9585-e8671a3bf9f3
+
+*Temperature across Texas.*
+
+Three outputs from the same window:
 
 https://github.com/user-attachments/assets/1635f5ff-0d6b-4716-8b8e-fb1bc6874117
 
 *Nodal price (LMP) across Texas. You can watch congestion and scarcity show up as
 prices split apart across locations, hour by hour.*
-
 
 https://github.com/user-attachments/assets/227690f4-eb69-4669-8a49-95d2c6ed3b3f
 
@@ -32,9 +36,11 @@ https://github.com/user-attachments/assets/227690f4-eb69-4669-8a49-95d2c6ed3b3f
 up in a few specific spots only in the hours the system gets tight — instead of
 failing everywhere at once.*
 
-Both sit on top of a full per-node, per-hour dataset underneath.
+https://github.com/user-attachments/assets/507fffc7-8eb2-497c-819b-f814195bcbdb
 
+*Generation curtailment.*
 
+All demonstrations sit on top of a full per-node, per-hour dataset underneath.
 
 ## How it works
 
@@ -74,17 +80,17 @@ stress, and how that stress shows up in both physical shortfall and price.
 
 ## Repository structure
 
-> The repository is being populated stage by stage. Structure below is the target layout.
+Numbered by run order; each stage feeds the next.
 
-```
-0_data_prep/     grid enrichment: county mapping, generator type/cost, wind IEC class
-1_weather/       ERA5 GRIB -> per-substation hourly weather
-2_resources/     wind, solar, hydro output + generator availability time series
-3_load/          temperature-sensitive nodal load
-4_dispatch/      storage -> unit commitment -> DC-OPF (MATLAB)
-data/            sample inputs + data provenance cards
-docs/            pipeline reference, output dictionary, methodology, media
-```
+0_grid_prep/ grid enrichment: county mapping, generator type/cost, wind IEC class
+1_weather/ ERA5 GRIB -> per-substation hourly weather
+2_resources/ wind, solar, hydro output + generator availability time series
+3_load/ temperature-sensitive nodal load (+ data provenance README)
+4_dispatch/ storage -> unit commitment -> DC-OPF (MATLAB)
+
+
+Data files live alongside the stage that uses them; each stage's data provenance is
+documented in that stage's README.
 
 ## Dependencies
 
@@ -95,17 +101,13 @@ docs/            pipeline reference, output dictionary, methodology, media
 
 ## Data sources
 
-Two core inputs, plus reference datasets:
+Two core inputs, plus reference datasets — all public; obtain each from its source
+(nothing is redistributed here):
 
 - **Synthetic grid** — [Texas A&M Electric Grid Datasets](https://electricgrids.engr.tamu.edu/) (Texas2k).
 - **Weather** — [ECMWF Climate Data Store](https://cds.climate.copernicus.eu/) (ERA5).
 - **Reference** — NASA POWER (wind climatology), NREL SLOPE / ResStock / ComStock
   (load composition and shapes), ORNL (industrial load), EIA (fuel prices, heat rates).
-
-Each source carries its own license and attribution terms; see `data/` for provenance
-cards. The code license here does **not** cover the data — raw ERA5 in particular is
-not redistributed, only accessed. Confirm each source's terms before redistributing
-any derived data.
 
 ## Status and roadmap
 
@@ -139,3 +141,4 @@ a team that does, I'd really appreciate a pointer or an introduction.
 Feedback is genuinely welcome, and I'm always happy to connect.
 
 <!-- Add your contact: email / LinkedIn / GitHub profile link -->
+
