@@ -34,10 +34,10 @@ import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt, matplotlib.animation as animation
 
 # ========================== config ==========================
-MAT      = r"C:\Users\jason\OneDrive\Documents\VSC\Earthkit\syngrid2025_timeseries_results.mat"
-CSV      = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv"
-COUNTIES = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\tx_counties.json"
-WEATHER  = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus_weather_data_25010115.csv"
+MAT      = "syngrid2025_timeseries_results.mat"
+CSV      = "bus2025_data.csv"
+COUNTIES = "tx_counties.json"
+WEATHER  = "bus_weather_data_25010115.csv"
 
 # which metrics to render (each produces one mp4). All six share one render().
 # After re-running the edited Ver8 (with genByBus_* saved), add:
