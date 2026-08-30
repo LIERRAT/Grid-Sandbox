@@ -1,0 +1,22 @@
+# ---- large / regenerable data (get from source or rerun pipeline) ----
+*.grib
+*.mat
+*.nc
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---- MATLAB ----
+*.asv
+*.mex*
+slprj/
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
