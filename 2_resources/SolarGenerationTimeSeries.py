@@ -5,9 +5,9 @@ import pvlib
 
 def main():
     # 1. 读表
-    weather_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus_weather_data_25010115.csv")  
-    bus_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv")  
-    gen_df = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\generator2025_data_modified.csv")  
+    weather_df = pd.read_csv("bus_weather_data_25010115.csv")  
+    bus_df = pd.read_csv("bus2025_data.csv")  
+    gen_df = pd.read_csv("generator2025_data_modified.csv")  
 
     # 2. 筛选光伏节点，并只合并静态空间信息
     solar_gens = gen_df[gen_df['FUEL_TYPE'] == 'SUN (Solar)'].copy()
