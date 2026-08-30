@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 
 def main():
-    df_bus = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\SLOPE_load_composition_bus_level.csv")
-    df_curve = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\RCI_Electricity_Load_Curves.csv")
-    df_weather = pd.read_csv(r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus_weather_data_25010115.csv")
+    df_bus = pd.read_csv("SLOPE_load_composition_bus_level.csv")
+    df_curve = pd.read_csv("RCI_Electricity_Load_Curves.csv")
+    df_weather = pd.read_csv("bus_weather_data_25010115.csv")
 
     
     # 1. 提取真实的 datetime 对象，方便后续进行时间的数学加减
