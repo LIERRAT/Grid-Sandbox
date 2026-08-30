@@ -40,7 +40,8 @@ https://github.com/user-attachments/assets/507fffc7-8eb2-497c-819b-f814195bcbdb
 
 *Generation curtailment.*
 
-All demonstrations sit on top of a full per-node, per-hour dataset underneath.
+All demonstrations sit on top of a full per-node, per-hour dataset underneath. For the full methodology, module-by-module logic, and validation against ERCOT
+historical data, see [`project_v1_overview.pdf`](project_v1_overview.pdf).
 
 ## How it works
 
@@ -105,8 +106,7 @@ Data files live alongside the stage that uses them; each stage's data provenance
 
 ## Data sources
 
-Two core inputs, plus reference datasets — all public; obtain each from its source
-(nothing is redistributed here):
+Two core inputs, plus reference datasets — all public; obtain each from its source:
 
 - **Synthetic grid** — [Texas A&M Electric Grid Datasets](https://electricgrids.engr.tamu.edu/) (Texas2k).
 - **Weather** — [ECMWF Climate Data Store](https://cds.climate.copernicus.eu/) (ERA5).
@@ -123,7 +123,7 @@ Two core inputs, plus reference datasets — all public; obtain each from its so
 
 ## Citation
 
-If you use this work, please cite it — see `CITATION.cff` (to be added).
+If you use this work, please cite it
 
 ## License
 
