@@ -12,18 +12,18 @@ GEN_RAW   = "generator2025_data.csv"                 # raw Texas2k generator tab
 BUS_DATA  = "bus2025_data.csv"                        # bus table w/ Latitude/Longitude/Substation_Number
 IEC_CACHE = "wind_iec_cache.csv"                      # auto-managed cache of NASA POWER lookups
 
-# ---- 抽样控制 ----
-SEED       = 42            # 固定种子, 可复现
-DIST_KIND  = "lognormal"   # "lognormal" (默认, 天生正/右偏, 贴合 EIA 样本形状)
-                           # 或 "normal" (截断于 >0; CV 大的 NGCT 会产生很多低值,不推荐)
+# ---- Sampling controls ----
+SEED       = 42            # fixed seed, reproducible
+DIST_KIND  = "lognormal"   # "lognormal" (default, naturally positive/right-skewed, matches the EIA sample shape)
+                           # or "normal" (truncated at >0; high-CV NGCT produces many low values, not recommended)
 
-# ---- 风机 IEC 分类控制 (原 IEC_CLASS.py 融合进来) ----
-IEC_SLEEP  = 0.35          # NASA POWER 调用间隔 (s), 防限流
-SHEAR_EXP  = 0.14          # 幂律风切变指数 (德州开阔地表), 50m -> 100m 外推
+# ---- Wind turbine IEC classification controls (formerly IEC_CLASS.py, merged in here) ----
+IEC_SLEEP  = 0.35          # NASA POWER call interval (s), to avoid rate limiting
+SHEAR_EXP  = 0.14          # power-law wind shear exponent (open Texas terrain), 50m -> 100m extrapolation
 
 
 def _draw(mean, sd, n, rng):
-    """按 arithmetic mean & sd 抽样。lognormal 用矩匹配参数化, 保证期望 mean/sd。"""
+    """Sample by arithmetic mean & sd. lognormal uses moment-matching parameterization to guarantee the expected mean/sd."""
     if DIST_KIND == "lognormal":
         sigma = np.sqrt(np.log(1.0 + (sd / mean) ** 2))
         mu    = np.log(mean) - 0.5 * sigma ** 2
@@ -34,12 +34,12 @@ def _draw(mean, sd, n, rng):
 
 
 # =====================================================================
-# 风机 IEC 分类 (原 IEC_CLASS.py 的两个函数, 原样搬入)
+# Wind turbine IEC classification (the two functions from the original IEC_CLASS.py, moved in as-is)
 # =====================================================================
 def get_mean_wind_speed_100m(lat, lon):
     """
-    获取 100m 高度年平均风速。GWA 限制批量接口, 改用 NASA POWER 开放气候数据:
-    取 50m 年平均风速 (WS50M), 再以幂律外推到 100m 轮毂高度。
+    Get the annual mean wind speed at 100m height. GWA restricts batch access, so use NASA POWER open climate data:
+    take the 50m annual mean wind speed (WS50M), then extrapolate to the 100m hub height via a power law.
     """
     url = (
         "https://power.larc.nasa.gov/api/temporal/climatology/point"
@@ -53,12 +53,12 @@ def get_mean_wind_speed_100m(lat, lon):
         ws_100m = ws_50m * ((100 / 50) ** SHEAR_EXP)
         return round(ws_100m, 2)
     except Exception as e:
-        print(f"  [IEC] 风速获取失败 ({lat}, {lon}): {e}")
+        print(f"  [IEC] wind speed retrieval failed ({lat}, {lon}): {e}")
         return None
 
 
 def assign_iec_class(wind_speed):
-    """风速 -> IEC Class (对应报告 Table 1/2 的逻辑)。"""
+    """Wind speed -> IEC Class (logic corresponding to Table 1/2 of the report)."""
     if pd.isna(wind_speed) or wind_speed is None:
         return "Unknown"
     if wind_speed > 8.5:
@@ -71,11 +71,11 @@ def assign_iec_class(wind_speed):
 
 def classify_wind_gens(gen_df, bus_df):
     """
-    给风机行赋 IEC class, 写入 GENERATOR_TYPE。
-    - 坐标来自 bus 表 (BUS_I -> Latitude/Longitude/Substation_Number)
-    - 按 Substation_Number 去重, 每个站点只调用一次 NASA POWER
-    - 结果落盘到 IEC_CACHE, 下次直接命中, 不重复打 API
-    返回: dict {GEN_I: IEC_Class}
+    Assign an IEC class to wind turbine rows, writing it into GENERATOR_TYPE.
+    - Coordinates come from the bus table (BUS_I -> Latitude/Longitude/Substation_Number)
+    - Deduplicate by Substation_Number, calling NASA POWER only once per site
+    - Results are persisted to IEC_CACHE, hit directly next time, no repeated API calls
+    Returns: dict {GEN_I: IEC_Class}
     """
     wind_mask = gen_df["FUEL_TYPE"] == "WND (Wind)"
     wind = gen_df.loc[wind_mask, ["GEN_I", "BUS_I"]].merge(
@@ -83,60 +83,60 @@ def classify_wind_gens(gen_df, bus_df):
         on="BUS_I", how="left",
     )
 
-    # 唯一站点 (有坐标的)
+    # Unique sites (those with coordinates)
     sites = (
         wind.dropna(subset=["Latitude", "Longitude"])
             .drop_duplicates("Substation_Number")
             .set_index("Substation_Number")
     )
 
-    # 读缓存
+    # Read the cache
     if os.path.exists(IEC_CACHE):
         cache = pd.read_csv(IEC_CACHE).set_index("Substation_Number")
-        print(f"[IEC] 命中缓存 {len(cache)} 个站点 ({IEC_CACHE})")
+        print(f"[IEC] cache hit for {len(cache)} sites ({IEC_CACHE})")
     else:
         cache = pd.DataFrame(columns=["Mean_Wind_Speed_100m", "IEC_Class"])
         cache.index.name = "Substation_Number"
 
-    # 缓存未覆盖的站点才查 API
+    # Only query the API for sites not covered by the cache
     todo = [s for s in sites.index if s not in cache.index]
-    print(f"[IEC] 需查询 {len(todo)} / {len(sites)} 个风机站点 ...")
+    print(f"[IEC] need to query {len(todo)} / {len(sites)} wind sites ...")
     for i, sub in enumerate(todo, 1):
         lat, lon = sites.loc[sub, "Latitude"], sites.loc[sub, "Longitude"]
-        print(f"  [IEC] {i}/{len(todo)} 站点 {sub}: ({lat:.3f}, {lon:.3f})")
+        print(f"  [IEC] {i}/{len(todo)} site {sub}: ({lat:.3f}, {lon:.3f})")
         ws = get_mean_wind_speed_100m(lat, lon)
         cache.loc[sub] = [ws, assign_iec_class(ws)]
         time.sleep(IEC_SLEEP)
 
-    # 存回缓存
+    # Save back to the cache
     cache.reset_index().to_csv(IEC_CACHE, index=False)
 
-    # 站点 -> class, 映射回每台风机
+    # site -> class, map back to each wind turbine
     sub2class = cache["IEC_Class"].to_dict()
     wind["IEC_Class"] = wind["Substation_Number"].map(sub2class).fillna("Unknown")
     n_unknown = (wind["IEC_Class"] == "Unknown").sum()
     if n_unknown:
-        print(f"[IEC] 警告: {n_unknown} 台风机无有效分类 (缺坐标或 API 失败) -> 'Unknown'")
-    print("[IEC] 分类分布:\n", wind["IEC_Class"].value_counts().to_string())
+        print(f"[IEC] warning: {n_unknown} wind turbines have no valid classification (missing coordinates or API failure) -> 'Unknown'")
+    print("[IEC] classification distribution:\n", wind["IEC_Class"].value_counts().to_string())
     return dict(zip(wind["GEN_I"], wind["IEC_Class"]))
 
 
 def main():
-    gen_df = pd.read_csv(GEN_RAW)   # 包含 gen_id, bus_number, resource_type, capacity
-    bus_df = pd.read_csv(BUS_DATA)  # 坐标 + substation, 供风机 IEC 分类用
+    gen_df = pd.read_csv(GEN_RAW)   # includes gen_id, bus_number, resource_type, capacity
+    bus_df = pd.read_csv(BUS_DATA)  # coordinates + substation, used for wind turbine IEC classification
 
     ## ---------------------------------------------------------
     ##
-    ## 赋予技术类型 (GENERATOR_TYPE)
+    ## Assign the technology type (GENERATOR_TYPE)
     ##
     ## ---------------------------------------------------------
 
     # ---------------------------------------------------------
-    # 天然气机组：依额定容量按经验概率分布赋类型: steam_turbine / combined_cycle / fired_combustion
+    # Natural gas units: assign a type by rated capacity using an empirical probability distribution: steam_turbine / combined_cycle / fired_combustion
     # ---------------------------------------------------------
     thermal_gens = gen_df[gen_df['FUEL_TYPE'] == 'NG (Natural Gas)'].copy()
 
-    # --- 由 EIA-860 分析得出的 cluster 参数 ---
+    # --- cluster parameters derived from EIA-860 analysis ---
     clusters = {
         "steam_turbine":    {"mean": 232.0, "std": 188.0, "weight": 0.1275},
         "combined_cycle":   {"mean": 167.0, "std": 90.5,  "weight": 0.3876},
@@ -163,15 +163,15 @@ def main():
     gen_df = gen_df.merge(thermal_gens[["GEN_I", "GENERATOR_TYPE"]], on="GEN_I", how="left")
 
     # ---------------------------------------------------------
-    # 风机：IEC class 作为 GENERATOR_TYPE (原 IEC_CLASS.py 融合于此)
-    #   - Class 1/2/3 / Unknown 写入 GENERATOR_TYPE, 供 wind time series 选功率曲线
+    # Wind turbines: IEC class as GENERATOR_TYPE (the original IEC_CLASS.py is merged here)
+    #   - Class 1/2/3 / Unknown written into GENERATOR_TYPE, used by the wind time series to pick the power curve
     # ---------------------------------------------------------
     geni2iec = classify_wind_gens(gen_df, bus_df)
     wind_mask = gen_df["FUEL_TYPE"] == "WND (Wind)"
     gen_df.loc[wind_mask, "GENERATOR_TYPE"] = gen_df.loc[wind_mask, "GEN_I"].map(geni2iec)
 
     # =========================================================
-    # 储能机组: 按功率赋储能时长(1..6h), 再算额定能量
+    # Storage units: assign a storage duration (1..6h) by power, then compute the rated energy
     # =========================================================
     storage_gens = gen_df[gen_df["FUEL_TYPE"] == "MWH (Electricity use for Energy Storage)"].copy()
 
@@ -179,7 +179,7 @@ def main():
     duration_counts = np.array([313, 346, 63, 370, 31, 8], dtype=float)
     duration_probs  = duration_counts / duration_counts.sum()
 
-    rng = np.random.default_rng(42)   # 固定种子
+    rng = np.random.default_rng(42)   # fixed seed
     storage_gens["Storage_Duration_h"] = rng.choice(
         duration_hours, size=len(storage_gens), p=duration_probs
     )
@@ -190,7 +190,7 @@ def main():
 
     ## ---------------------------------------------------------
     ##
-    ## 更新发电成本 (GENERATOR_COST)
+    ## Update the generation cost (GENERATOR_COST)
     ##
     ## ---------------------------------------------------------
 
@@ -200,11 +200,11 @@ def main():
         "BIT": 2.02,    # EIA EPM Table 4.10.A, Mar 2025
         "NUC": 0.58,    # EIA nuclear data & statistics
         "DFO": 17.13,   # EIA EPM Table 4.2
-        "OBL": 100,     # 未定义, 占位
-        "OTH": 100,     # 未定义, 占位
+        "OBL": 100,     # undefined, placeholder
+        "OTH": 100,     # undefined, placeholder
     }
 
-    # --- (A) 有 EIA-923 TX 分布的四类: 热耗 ~ 分布(mean, sd), MMBtu/MWh ---
+    # --- (A) The four categories with an EIA-923 TX distribution: heat rate ~ dist(mean, sd), MMBtu/MWh ---
     HEAT_RATE_DIST_MMBTU_PER_MWH = {
         ("NG",  "combined_cycle"):   {"mean": 6.891,  "sd": 1.169},
         ("NG",  "fired_combustion"): {"mean": 9.867,  "sd": 3.862},
@@ -212,7 +212,7 @@ def main():
         ("BIT", None):               {"mean": 11.136, "sd": 0.867},
     }
 
-    # --- (B) 无分布数据的燃料: 点值 (EIA Table 8.2, Btu/kWh) ---
+    # --- (B) Fuels without distribution data: point values (EIA Table 8.2, Btu/kWh) ---
     HEAT_RATE_BTU_PER_KWH = {
         ("NUC", None): 10443,
         ("DFO", None): 13083,
@@ -230,7 +230,7 @@ def main():
     rng = np.random.default_rng(SEED)
     report = []
 
-    # (A) 分布抽样 —— 顺序固定以保证可复现
+    # (A) Distribution sampling — order is fixed to guarantee reproducibility
     for (fuel, gtype), p in HEAT_RATE_DIST_MMBTU_PER_MWH.items():
         if gtype is None:
             mask = gen_df["FUEL_SHORT"] == fuel
@@ -244,14 +244,14 @@ def main():
         gen_df.loc[idx, "fuel_price_cf"] = FUEL_PRICE[fuel]
         report.append((f"{fuel}/{gtype or '-'}", len(idx), p, hr, 0))
 
-    # (B) 点值
+    # (B) Point values
     for (fuel, gtype), btu_per_kwh in HEAT_RATE_BTU_PER_KWH.items():
         b1 = btu_per_kwh * BTU_PER_KWH_TO_MMBTU_PER_MWH
         mask = (gen_df["FUEL_SHORT"] == fuel)
         gen_df.loc[mask, "heat_rate_b1"]  = b1
         gen_df.loc[mask, "fuel_price_cf"] = FUEL_PRICE[fuel]
 
-    # gencost 多项式: c1 = cf*b1 ; c2 = cf*b2 ; 非传统机组自然保持 0
+    # gencost polynomial: c1 = cf*b1 ; c2 = cf*b2 ; non-conventional units naturally stay at 0
     gen_df["c1"] = (gen_df["fuel_price_cf"] * gen_df["heat_rate_b1"]).round(4)
     gen_df["c2"] = (gen_df["fuel_price_cf"] * gen_df["heat_rate_b2"]).round(6)
 
