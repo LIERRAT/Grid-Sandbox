@@ -19,12 +19,14 @@ operators run themselves.
 
 Two outputs from a mid-January window:
 
-![Nodal price (LMP) across Texas, hour by hour](docs/media/lmp_animation.gif)
+
+https://github.com/user-attachments/assets/1635f5ff-0d6b-4716-8b8e-fb1bc6874117
 
 *Nodal price (LMP) across Texas. You can watch congestion and scarcity show up as
 prices split apart across locations, hour by hour.*
 
-![Load shed across Texas, hour by hour](docs/media/loadshed_animation.gif)
+
+https://github.com/user-attachments/assets/227690f4-eb69-4669-8a49-95d2c6ed3b3f
 
 *Load shed. What I find striking is that it stays quiet most of the time, then lights
 up in a few specific spots only in the hours the system gets tight — instead of
@@ -32,8 +34,7 @@ failing everywhere at once.*
 
 Both sit on top of a full per-node, per-hour dataset underneath.
 
-> **Note:** drop the exported animations at `docs/media/lmp_animation.gif` and
-> `docs/media/loadshed_animation.gif` for these to render.
+
 
 ## How it works
 
