@@ -11,7 +11,7 @@ def main():
     ACCUM_PARAMS   = ["ssrd", "10fg"]
     ALL_PARAMS     = INSTANT_PARAMS + ACCUM_PARAMS
     WEATHER_RAW = "25010115.grib" # <<< input the weather data from CDS
-    # ── 1. 读取 grib 并构建 Dataset ───────────────────────────────────────────────
+    # ── 1. Read the grib and build the Dataset ───────────────────────────────────────────────
 
     ds_raw = ekd.from_source("file", WEATHER_RAW)
 
@@ -31,7 +31,7 @@ def main():
             records.append((dt_utc, f.to_numpy()))
 
         lats, lons = fields[0].grid_points()
-        lat_vals = np.unique(lats)[::-1]   # 北→南
+        lat_vals = np.unique(lats)[::-1]   # north -> south
         lon_vals = np.unique(lons)
 
         times = [r[0] for r in records]
@@ -56,7 +56,7 @@ def main():
         print(f"Processing {param}...")
         da = extract_param(ds_raw, param)
         
-        # 1. 强制对齐经纬度：以第一个变量（例如 'sd'）的经纬度为基准，覆盖后续所有变量的微小浮点误差
+        # 1. Force lat/lon alignment: use the first variable's (e.g. 'sd') lat/lon as the reference, overriding the tiny floating-point discrepancies of all later variables
         if i == 0:
             master_lat = da.latitude
             master_lon = da.longitude
@@ -66,23 +66,23 @@ def main():
                 "longitude": master_lon
             })
             
-        # 2. 统一处理时间乱序：不仅是 ssrd，新加的 tp, 10fg 等所有变量都统一按时间轴排序
+        # 2. Uniformly handle out-of-order time: not just ssrd, but all newly added variables like tp, 10fg are sorted along the time axis
         arrays[param] = da.sortby("time")
 
     xr_ds = xr.Dataset(arrays)
 
-    # ── 2. 读取你的坐标 CSV ───────────────────────────────────────────────────────
+    # ── 2. Read your coordinate CSV ───────────────────────────────────────────────────────
 
-    coords_df = pd.read_csv("coordinates.csv")   # 需有 lat, lon 两列
+    coords_df = pd.read_csv("coordinates.csv")   # must have the two columns lat, lon
     lats = coords_df["lat"].values
     lons = coords_df["lon"].values
 
-    # ── 3. 经度对齐（-180~180 → 0~360）──────────────────────────────────────────
+    # ── 3. Longitude alignment (-180~180 -> 0~360) ──────────────────────────────────────────
 
     if xr_ds.longitude.max() > 180:
         lons = lons % 360
 
-    # ── 4. 矢量化提取 ─────────────────────────────────────────────────────────────
+    # ── 4. Vectorized extraction ─────────────────────────────────────────────────────────────
 
     points_data = xr_ds.sel(
         latitude=xr.DataArray(lats, dims="points"),
@@ -95,17 +95,17 @@ def main():
     result_df["original_lon"] = lons[result_df["points"].values]
 
 
-    # ── 5. NaN 修补 ───────────────────────────────────────────────────────────────
+    # ── 5. NaN patching ───────────────────────────────────────────────────────────────
 
     warnings.filterwarnings("ignore", message="Mean of empty slice")
-    print("开始扫描并修补缺失数据...")
+    print("Starting to scan and patch missing data...")
 
     nan_coords = (
         result_df[result_df["2t"].isna()][["original_lat", "original_lon"]]
         .drop_duplicates()
 
     )
-    print(f"发现 {len(nan_coords)} 个存在缺测的边界坐标...")
+    print(f"Found {len(nan_coords)} boundary coordinates with missing values...")
 
     for _, row in nan_coords.iterrows():
         target_lat = row["original_lat"]
@@ -129,7 +129,7 @@ def main():
         )
         
 
-        # ★ 关键修改：时间列名从 forecast_reference_time+step 改为 time
+        # * Key change: the time column name changed from forecast_reference_time+step to time
         time_cols = ["time"]
 
         target_subset = result_df.loc[mask, time_cols].copy()
@@ -147,11 +147,11 @@ def main():
 
     remaining_nans = result_df["2t"].isna().sum()
     if remaining_nans > 0:
-        print(f"修补完成，仍有 {remaining_nans} 行缺失（可能完全位于深海）。")
+        print(f"Patching complete; {remaining_nans} rows are still missing (possibly located entirely over deep ocean).")
     else:
-        print("修补完美完成！")
+        print("Patching completed perfectly!")
 
-    # ── 6. UTC → 德州时间，导出 ──────────────────────────────────────────────────
+    # ── 6. UTC -> Texas time, export ──────────────────────────────────────────────────
 
     result_df["time"] = (
         pd.to_datetime(result_df["time"])
@@ -160,23 +160,23 @@ def main():
         .dt.tz_localize(None) 
     )
 
-    # 建立 points → Substation_Number 的映射
+    # Build the points -> Substation_Number mapping
     substation_map = dict(zip(coords_df.index, coords_df["Substation_Number"]))
 
-    # 替换 points 列
+    # Replace the points column
     result_df["points"] = result_df["points"].map(substation_map)
     result_df = result_df.rename(columns={"points": "Substation_Number"}) 
  
     
-    # 整理输出列顺序
+    # Arrange the output column order
     result_df = result_df.rename(columns={"time": "datetime"})
     result_df ['datetime'] = pd.to_datetime(result_df['datetime'])
-    # 过滤时间，小数位
+    # Filter time, round decimals
     result_df = result_df[result_df["datetime"] >= "2025-01-01"]
     result_df['date'] = result_df['datetime'].dt.date
     result_df['time'] = result_df['datetime'].dt.strftime('%H:%M')
     
-    #整合风速
+    # Combine wind speed components
     result_df["10Wind"] = np.sqrt(result_df["10u"]**2 + result_df["10v"]**2)
     result_df["100Wind"] = np.sqrt(result_df["100u"]**2 + result_df["100v"]**2)
     result_df["sd"] = result_df["sd"].round(4)
