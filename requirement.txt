@@ -1,0 +1,26 @@
+# Python dependencies for the data-prep, weather, resource, and load stages.
+# Install with:  pip install -r requirements.txt
+#
+# The dispatch stage (4_dispatch/Syngrid2025.m) is MATLAB and is NOT covered here.
+# It additionally requires: MATLAB, MATPOWER 8.1, and Gurobi (free academic license).
+#
+# Versions are left unpinned. For a reproducible environment, pin to what you
+# actually ran, e.g.:  pip freeze > requirements.lock.txt
+# (pvlib in particular changes API across versions — pin it if you share results.)
+
+# --- core (used everywhere) ---
+pandas
+numpy
+scipy
+
+# --- weather processing (1_weather) ---
+earthkit-data        # imported as `earthkit.data`; reads the ERA5 GRIB
+xarray
+pytz
+
+# --- resources (2_resources) ---
+pvlib                # solar PV modeling
+requests             # NASA POWER API for wind IEC classification
+
+# --- grid prep (0_grid_prep) ---
+geopandas            # spatial join of buses to counties; needs GDAL under the hood
