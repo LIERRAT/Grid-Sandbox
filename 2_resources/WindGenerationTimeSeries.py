@@ -4,33 +4,34 @@ import numpy as np
 # =====================================================================
 # Paths (relative, repo-friendly — point elsewhere or move to a config module)
 # =====================================================================
-WEATHER_DATA = "bus_weather_data_25010115.csv"          # substation/bus 级天气 (含 100Wind, 2t, sp)
+WEATHER_DATA = "bus_weather_data_25010115.csv"          # substation/bus-level weather (includes 100Wind, 2t, sp)
 BUS_DATA     = "bus2025_data.csv"
-GEN_DATA     = "generator2025_data_modified.csv" # 风机 GENERATOR_TYPE 已是 IEC class
+GEN_DATA     = "generator2025_data_modified.csv" # Wind turbine GENERATOR_TYPE is already the IEC class
 
 def main():
 
-    # 风电场在正常情况下的发电表现 regular performance curve
+    # Wind farm generation performance under normal conditions (regular performance curve)
 
     # ---------------------------------------------------------
-    # Step 1: 整理表格
-    #   IEC class 不再单独读 wind_farms_iec_classified.csv,
-    #   而是直接取自 gen 表的 GENERATOR_TYPE (由 Generator_Type_Cost_Config.py 赋值)
+    # Step 1: Prepare the tables
+    #   IEC class is no longer read separately from wind_farms_iec_classified.csv;
+    #   instead it is taken directly from the GENERATOR_TYPE column of the gen table
+    #   (assigned by Generator_Type_Cost_Config.py)
     # ---------------------------------------------------------
-    weather_df = pd.read_csv(WEATHER_DATA)   # substation/bus, 10u, 10v, 2t, sp 等
+    weather_df = pd.read_csv(WEATHER_DATA)   # substation/bus, 10u, 10v, 2t, sp, etc.
     bus_df     = pd.read_csv(BUS_DATA)       # bus_number, substation_id
     gen_df     = pd.read_csv(GEN_DATA)       # gen_id, bus_number, resource_type, capacity, GENERATOR_TYPE
 
     wind_gens = gen_df[gen_df['FUEL_TYPE'] == 'WND (Wind)'].copy()
 
-    # GENERATOR_TYPE 即 IEC class ("Class 1/2/3" / "Unknown")
+    # GENERATOR_TYPE is the IEC class ("Class 1/2/3" / "Unknown")
     wind_gens['IEC_Class'] = wind_gens['GENERATOR_TYPE']
 
     wind_gens = pd.merge(wind_gens, bus_df, on='BUS_I', how='left')
     wind_gens = pd.merge(wind_gens, weather_df, on='Substation_Number', how='left')
 
     # ---------------------------------------------------------
-    # Step 3: 修正时间，温度，空气密度
+    # Step 3: Correct time, temperature, and air density
     # ---------------------------------------------------------
     wind_gens["datetime"] = wind_gens['date'] + ' ' + wind_gens['time']
 
@@ -43,7 +44,7 @@ def main():
     wind_gens['adj_wind_speed'] = wind_gens['100Wind'] * (wind_gens['rho_actual'] / 1.225)**(1/3)
 
     # ---------------------------------------------------------
-    # Step 4: 定义功率曲线，插值
+    # Step 4: Define the power curve and interpolate
     # ---------------------------------------------------------
     speed_bins = np.arange(0, 26)  # 0..25
     iec_class_2_norm = [
@@ -55,9 +56,10 @@ def main():
         0.9178, 0.9796, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0
     ]
 
-    # right=0: 等效风速 > 25 m/s (表尾) -> 停机保护, 出力=0
-    # 注意: 当前仅区分 Class 2 vs 其余; Class 1(强风场) 目前套用 Class 3 曲线,
-    #       偏保守。若日后加入 Class 1 专用曲线, 在此扩展映射即可。
+    # right=0: equivalent wind speed > 25 m/s (end of table) -> cut-out protection, output = 0
+    # Note: currently only Class 2 vs the rest is distinguished; Class 1 (high-wind sites) currently
+    #       uses the Class 3 curve, which is conservative. If a dedicated Class 1 curve is added later,
+    #       simply extend the mapping here.
     is_class2 = wind_gens['IEC_Class'] == 'Class 2'
     wind_gens['norm_power'] = np.where(
         is_class2,
@@ -67,15 +69,15 @@ def main():
     wind_gens['simulated_PG'] = wind_gens['norm_power'] * wind_gens['PMAX']
 
     # ---------------------------------------------------------
-    # Step 5: 定义停机逻辑
+    # Step 5: Define the shutdown logic
     # ---------------------------------------------------------
-    # GEN_STATUS 为 0 (脱网/故障) -> 出力 0
+    # GEN_STATUS is 0 (off-grid/fault) -> output 0
     wind_gens['simulated_PG'] = np.where(wind_gens['GEN_STATUS'] == 1, wind_gens['simulated_PG'], 0.0)
-    # 低温停机: 温度 < -20°C -> 出力 0
+    # Low-temperature shutdown: temperature < -20°C -> output 0
     wind_gens['simulated_PG'] = np.where(wind_gens['2m_temp_celcius'] < -20, 0.0, wind_gens['simulated_PG'])
 
     # ---------------------------------------------------------
-    # Step 6: 数据输出
+    # Step 6: Data output
     # ---------------------------------------------------------
     wind_gens = wind_gens[[
         'datetime', 'date', 'time', 'BUS_I', 'GEN_I', 'Substation_Number',
