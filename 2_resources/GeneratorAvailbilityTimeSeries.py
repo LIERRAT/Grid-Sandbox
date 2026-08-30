@@ -23,10 +23,10 @@ def get_rates(fuel, technology):
 
 def simulate_generator(temps, fuel, technology, pmax, lam_D, lam_O, mu_D, mu_O, hours, rng=None):
     """
-    三态序贯 MC: Available <-> Derate, Available <-> Outage (D/O 之间不转移)
-    lam_D, lam_O: Available->Derate / Available->Outage 转移率 (1/h)
-    mu_D,  mu_O : Derate->Available / Outage->Available 修复率 (1/h)
-    返回: 长度 hours+3 的数组 [cap_0..cap_{h-1}, down_hours, n_derate, n_outage]
+    Three-state sequential MC: Available <-> Derate, Available <-> Outage (no transition between D and O)
+    lam_D, lam_O: Available->Derate / Available->Outage transition rates (1/h)
+    mu_D,  mu_O : Derate->Available / Outage->Available repair rates (1/h)
+    Returns: an array of length hours+3 -> [cap_0..cap_{h-1}, down_hours, n_derate, n_outage]
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -52,7 +52,7 @@ def simulate_generator(temps, fuel, technology, pmax, lam_D, lam_O, mu_D, mu_O, 
     n_derate = n_outage = 0
     lam_tot = lam_D + lam_O
 
-    # 初始状态: 三态稳态分布  π_A:π_D:π_O = 1 : λ_D/μ_D : λ_O/μ_O
+    # Initial state: three-state steady-state distribution  pi_A:pi_D:pi_O = 1 : lam_D/mu_D : lam_O/mu_O
     wD, wO = lam_D / mu_D, lam_O / mu_O
     Z = 1.0 + wD + wO
     u = rng.random()
@@ -61,7 +61,7 @@ def simulate_generator(temps, fuel, technology, pmax, lam_D, lam_O, mu_D, mu_O, 
     t = 0.0
     while t < hours:
         if state == "Available":
-            # 竞争风险: 离开可用态时间 ~ Exp(λ_D+λ_O)
+            # Competing risks: time to leave the available state ~ Exp(lam_D+lam_O)
             t = min(t - np.log(rng.random()) / lam_tot, hours)
             if t >= hours:
                 break
@@ -73,7 +73,7 @@ def simulate_generator(temps, fuel, technology, pmax, lam_D, lam_O, mu_D, mu_O, 
             repair_rate = mu_D if state == "Derate" else mu_O
             t_end = min(t - np.log(rng.random()) / repair_rate, hours)
             start = int(t)
-            end   = min(max(int(t_end), start + 1), hours)   # 至少 1 小时，且不越界
+            end   = min(max(int(t_end), start + 1), hours)   # at least 1 hour, and stay within bounds
             capacity[-3] += (end - start)
             if state == "Outage":
                 capacity[start:end] = 0.0
@@ -88,20 +88,20 @@ def simulate_generator(temps, fuel, technology, pmax, lam_D, lam_O, mu_D, mu_O, 
     return capacity
 
 def main():
-    # 天然气发电站，煤电发电站，和水电发电站在正常情况下的发电表现 regular performance curve
+    # Regular performance curve for natural gas, coal, and hydro power plants under normal conditions
 
     # ---------------------------------------------------------
-    # Step 1: 整理表格
+    # Step 1: Prepare the tables
     # ---------------------------------------------------------
-    weather_df = pd.read_csv("bus_weather_data_25010115.csv")  # 包含 substation/bus, 10u, 10v, 2t, sp 等
-    bus_df = pd.read_csv("bus2025_data.csv")  # 包含 bus_number, substation_id
-    gen_df = pd.read_csv("generator2025_data_modified.csv")  # 包含 gen_id, bus_number, resource_type, capacity
+    weather_df = pd.read_csv("bus_weather_data_25010115.csv")  # includes substation/bus, 10u, 10v, 2t, sp, etc.
+    bus_df = pd.read_csv("bus2025_data.csv")  # includes bus_number, substation_id
+    gen_df = pd.read_csv("generator2025_data_modified.csv")  # includes gen_id, bus_number, resource_type, capacity
     thermal_gens = gen_df[(gen_df['FUEL_TYPE'] == 'NG (Natural Gas)') | (gen_df['FUEL_TYPE'] == 'BIT (Bituminous Coal)') | (gen_df['FUEL_TYPE'] == 'NUC (Nuclear)') | (gen_df['FUEL_TYPE'] == 'DFO (Distillate Fuel Oil)')].copy()
     hydro_annual_cf = 0.09
     hydro_gens = gen_df[(gen_df['FUEL_TYPE'] == 'WAT (Water)')].copy()
     hydro_gens["PMAX"] = hydro_gens["PMAX"] * hydro_annual_cf  
 
-    # 纵向拼接成一张机组表，保留单一的 PMAX 列
+    # Vertically concatenate into a single unit table, keeping a single PMAX column
     thermal_hydro_gens = pd.concat([thermal_gens, hydro_gens], ignore_index=True)
     thermal_hydro_gens = pd.merge(thermal_hydro_gens, bus_df, on='BUS_I', how='left')
     thermal_hydro_gens = pd.merge(thermal_hydro_gens, weather_df, on='Substation_Number', how='left')
@@ -110,7 +110,7 @@ def main():
     
     hours  = 354 #200000
     trials = 1
-    rng = np.random.default_rng(0)          # 单一 rng，结果可复现
+    rng = np.random.default_rng(0)          # single rng, results are reproducible
 
     nd = no = ndhr = 0
     gen_ids = thermal_hydro_gens["GEN_I"].unique()
@@ -133,7 +133,7 @@ def main():
             nd   += cap_series[-2]
             no   += cap_series[-1]
             ndhr += cap_series[-3]
-            lost_mwh     = (pmax - cap_series[:hours]).sum()   # 等效损失容量
+            lost_mwh     = (pmax - cap_series[:hours]).sum()   # equivalent lost capacity
             if (cap_series[-1] + cap_series[-2]) > 0:
                 gen_long_parts.append(pd.DataFrame({
                     "BUS_I":    gen_row["BUS_I"].iloc[0],
@@ -141,12 +141,12 @@ def main():
                     "PMAX":     pmax,
                     "hour":     np.arange(hours),
                     "capacity": cap_series[:hours],
-                    # "trial":  trial,      # 想区分不同 trial 就打开这行
+                    # "trial":  trial,      # uncomment this line to distinguish between different trials
                 }))
                 gen_fault_record.append((gid, fuel, technology, pmax,cap_series[-2], cap_series[-1], cap_series[-3]))
                         
             
-            # 循环体内，算完 lost_mwh 之后加：
+            # Inside the loop body, add after computing lost_mwh:
             k = (fuel, technology)
             stat[k]["nd"]   += cap_series[-2]
             stat[k]["no"]   += cap_series[-1]
@@ -154,23 +154,23 @@ def main():
             stat[k]["caph"] += hours * pmax * 0.63
             stat[k]["n"]    += 1
 
-    # 循环结束后：
-    print(f"\n{'type':<40}{'台次':>7}{'降额/台':>9}{'停机/台':>6}{'WEFOR':>9}")
+    # After the loop finishes:
+    print(f"\n{'type':<40}{'units':>7}{'derate/unit':>13}{'outage/unit':>13}{'WEFOR':>9}")
     for k,v in stat.items():
         n = v["n"]
-        print(f"{str(k):<40}{n:>7}{v['nd']/n:>9.2f}{v['no']/n:>9.2f}{v['lost']/v['caph']:>9.4f}")
+        print(f"{str(k):<40}{n:>7}{v['nd']/n:>13.2f}{v['no']/n:>13.2f}{v['lost']/v['caph']:>9.4f}")
 
     thermal_hydro_time_series_df = pd.concat(gen_long_parts, ignore_index=True)
     
-    # 1) 从 weather_df 第一行取起始时间
+    # 1) Take the start time from the first row of weather_df
     start = pd.to_datetime(
         str(weather_df["date"].iloc[0]) + " " + str(weather_df["time"].iloc[0])
     )   # -> 2025-01-01 00:00:00
 
-    # 2) 起始时间 + hour 小时
+    # 2) Start time + hour hours
     dt = start + pd.to_timedelta(thermal_hydro_time_series_df["hour"], unit="h")
 
-    # 3) 拆成 date 列和 time 列
+    # 3) Split into a date column and a time column
     thermal_hydro_time_series_df["date"] = (dt.dt.month.astype(str) + "/" + dt.dt.day.astype(str) + "/" + dt.dt.year.astype(str)) # 1/1/2025
     thermal_hydro_time_series_df["time"] = (dt.dt.hour.astype(str) + ":" + dt.dt.minute.astype(str).str.zfill(2)) # 0:00
 
@@ -180,7 +180,7 @@ def main():
     gen_fault_record_df = pd.DataFrame(gen_fault_record, columns=["GEN_ID", "FUEL_TYPE", "GENERATOR_TYPE", "PMAX", "Derate", "Outage", "Duration"])
     gen_fault_record_df.to_csv("gen_fault_record.csv", index=False)
 
-    print(f"平均降额次数: {nd/trials}, 平均停机次数: {no/trials}, 平均降额+停机小时占比: {ndhr/(len(gen_ids)*trials*hours)}, 单次机组数: {len(gen_ids)}, 测试次数: {trials}")
+    print(f"Average number of derates: {nd/trials}, average number of outages: {no/trials}, average share of derate+outage hours: {ndhr/(len(gen_ids)*trials*hours)}, units per run: {len(gen_ids)}, number of trials: {trials}")
     
 if __name__ == "__main__":
     main()
