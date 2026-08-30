@@ -8,8 +8,8 @@ from scipy.stats import norm
 # =====================================================================
 # Paths (relative, repo-friendly — point elsewhere or move to a config module)
 # =====================================================================
-GEN_RAW   = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\generator2025_data.csv"                 # raw Texas2k generator table
-BUS_DATA  = r"C:\Users\jason\OneDrive\Documents\Rutgers\25-26\Smart Grids\research material\Texas2k_series2025\bus2025_data.csv"                        # bus table w/ Latitude/Longitude/Substation_Number
+GEN_RAW   = "generator2025_data.csv"                 # raw Texas2k generator table
+BUS_DATA  = "bus2025_data.csv"                        # bus table w/ Latitude/Longitude/Substation_Number
 IEC_CACHE = "wind_iec_cache.csv"                      # auto-managed cache of NASA POWER lookups
 
 # ---- 抽样控制 ----
