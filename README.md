@@ -1,4 +1,4 @@
-# Weather-Driven Scenario Generator for Extreme-Weather Grid Reliability
+# Grid-Sandbox: A Weather-Driven Scenario Generator for Extreme-Weather Grid Reliability
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Status: research prototype](https://img.shields.io/badge/status-research%20prototype-blue)
